@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.koi.mapper.UserRoleMapper">
+	<!-- 开启二级缓存 -->
+	<cache />
+	<!-- 查询当前用户所拥有的角色 -->
+	<select id="selectRoleByUserId" parameterType="long" resultType="URole">
+		SELECT u_role.* FROM
+		u_user,u_role,u_user_role
+		WHERE
+		u_user.id=u_user_role.uid AND
+		u_role.id=u_user_role.rid
+		AND
+		u_user.id=#{userId}
+	</select>
+	<!-- 查询角色列表 -->
+	<select id="selectRoleByInfo" parameterType="string" resultType="URole">
+		SELECT * FROM u_role
+		<if test="info != '' and info!=null ">
+			<where>
+				(u_role.name like  concat('%',#{info},'%') OR
+				u_role.type like
+				 concat('%',#{info},'%'))
+			</where>
+		</if>
+	</select>
+	<!-- 新增角色列表 -->
+	<insert id="addRoleList" parameterType="URole">
+		INSERT INTO
+		u_role(name,type)VALUES (#{name},#{type})
+	</insert>
+	<!-- 修改角色列表 -->
+	<update id="updateRoleList" parameterType="URole">
+		UPDATE u_role SET
+		name=#{name},type=#{type} WHERE id=#{id}
+	</update>
+	<!-- 删除角色列表 -->
+	<delete id="deleteRoleListById">
+		DELETE u_user_role.*,u_role.*,u_role_permission.* FROM
+		u_role LEFT JOIN
+		u_user_role ON u_role.id = u_user_role.rid
+		LEFT JOIN u_role_permission
+		ON u_role.id=u_role_permission.rid
+		WHERE u_role.id IN
+		<!-- forEach : 用来循环 collection : 用来指定循环的数据的类型 可以填的值有：array,list,map item 
+			: 循环中为每个循环的数据指定一个别名 index : 循环中循环的下标 open : 开始 close : 结束 separator : 数组中元素之间的分隔符 -->
+		<foreach collection="array" item="id" open="(" separator=","
+			close=")">
+			#{id}
+		</foreach>
+	</delete>
+	<!-- 批量添加角色列表 -->
+	<insert id="addBatchRoleList">
+		INSERT INTO u_role(name,type)VALUES
+		<foreach collection="list" item="urole" separator=",">
+			(#{urole.name},#{urole.type})
+		</foreach>
+	</insert>
+	<!-- 查询用户列表 -->
+	<select id="selectRoleAllocation" parameterType="string"
+		resultMap="user" useCache="false">
+		SELECT u_user.id user_id, u_user.nickname user_nickname,u_user.email
+		user_email,u_user.status user_status FROM u_user
+		<if test="info!=''">
+			<where>
+				AND (u_user.nickname like  concat('%',#{info},'%')
+				OR
+				u_user.email like concat('%',#{info},'%'))
+			</where>
+		</if>
+	</select>
+	<!-- 返回用户列表和嵌套查询该用户的所拥有的角色 -->
+	<resultMap type="UUserRole" id="user">
+		<id column="user_id" property="id" />
+		<result column="user_nickname" property="nickname" />
+		<result column="user_email" property="email" />
+		<result column="user_status" property="status" />
+		<collection property="role" ofType="URole" column="user_id" select="queryRoleByUserId">
+		</collection>
+	</resultMap>
+	<!-- 通过用户id查询角色列表 -->
+	<select id="queryRoleByUserId" resultType="URole">
+		SELECT
+		u_role.id,u_role.name,u_role.type FROM u_role
+		LEFT
+		JOIN u_user_role ON
+		u_role.id=u_user_role.rid
+		WHERE
+		u_user_role.uid=#{user_id}
+	</select>
+	<!-- 通过userId查询角色分配列表 -->
+	<select id="selectRoleIdByUserId" parameterType="int"
+		resultType="int">
+		SELECT urole.rid FROM u_user_role urole WHERE
+		urole.uid=#{uId}
+	</select>
+	<!-- 角色分配添加 -->
+	<insert id="addRoleAllocation">
+		INSERT INTO u_user_role(uid,rid) VALUES
+		<foreach collection="roleIds" item="rId" separator=",">
+			(#{uId},#{rId})
+		</foreach>
+	</insert>
+	<!-- 角色分配清空 -->
+	<delete id="deleteRoleAllocation">
+		DELETE FROM u_user_role WHERE uid=#{uId} AND rid IN
+		<foreach collection="roleIds" item="rId" open="(" separator=","
+			close=")">
+			#{rId}
+		</foreach>
+	</delete>
+	<!-- 通过userId清空角色分配 -->
+	<delete id="deleteRoleAllocationByUseRId">
+		DELETE FROM u_user_role WHERE uid IN
+		<foreach collection="array" item="uId" open="(" separator=","
+			close=")">
+			#{uId}
+		</foreach>
+	</delete>
+</mapper>

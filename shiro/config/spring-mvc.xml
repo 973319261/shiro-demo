@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+  http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+  http://www.springframework.org/schema/mvc 
+  http://www.springframework.org/schema/mvc/spring-mvc-4.3.xsd 
+  http://www.springframework.org/schema/context 
+  http://www.springframework.org/schema/context/spring-context-4.3.xsd	
+  http://www.springframework.org/schema/aop 
+	http://www.springframework.org/schema/aop/spring-aop-4.3.xsd 
+	http://www.springframework.org/schema/tx 
+	http://www.springframework.org/schema/tx/spring-tx-4.3.xsd ">
+	<!-- 配置包（组件）扫描包，扫描注解（@controller等注解） -->
+	<context:component-scan base-package="com.koi">
+		<!-- 排除service层的注解 -->
+		<!-- 注意：该注解必须放置spring该容器中，而不能放在spring-mvc.xml子容器中，要不然事务会启动失败（因为父容器访问不到子容器，也就是事务注解@Transactional不能访问到service层）） -->
+		<context:exclude-filter type="annotation"
+			expression="org.springframework.stereotype.Service" />
+	</context:component-scan>
+	<!-- 加载注解驱动  配置处理器映射器和适配器-->
+	<mvc:annotation-driven validator="validator" />
+	<!-- 配置静态资源的访问映射，此配置中的文件，将不被前端控制器拦截 -->
+	<mvc:resources location="/Context/" mapping="/Context/**" />
+	<!-- 配置视图解析器 -->
+	<bean
+		class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+		<property name="prefix" value="/WEB-INF/jsp/" />
+		<property name="suffix" value=".jsp" />
+	</bean>
+
+	<!-- 数据校验器 -->
+	<bean id="validator"
+		class="org.springframework.validation.beanvalidation.LocalValidatorFactoryBean">
+		<property name="providerClass" value="org.hibernate.validator.HibernateValidator" />
+		<!-- 指定校验使用的资源文件，如果不指定则默认使用classpath下的validationInfo.properties -->
+		<property name="validationMessageSource" ref="messageSource"></property>
+	</bean>
+	<!-- 校验错误信息配置文件 -->
+	<bean id="messageSource"
+		class="org.springframework.context.support.ReloadableResourceBundleMessageSource">
+		<!-- 资源名 （没有后缀名）-->
+		<property name="basename" value="classpath:validationInfo" />
+		<!-- 资源文件编码格式 -->
+		<property name="fileEncodings" value="utf-8" />
+		<!-- 对资源文件内容缓存的时间，单位秒 -->
+		<property name="cacheSeconds" value="120" />
+	</bean>
+
+	<!-- 配置文件上传解析器MultipartResolver id必须为multipartResolver -->
+	<bean id="multipartResolver"
+		class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+		<property name="defaultEncoding" value="UTF-8" />
+		<property name="maxUploadSize" value="2097152" />
+	</bean>
+	<!-- 开启日志记录 -->
+	<!-- 启动基于注解的声明式AspectJ支持 -->
+	<!-- <aop:aspectj-autoproxy /> -->
+	
+	<!-- 配置拦截器 -->
+	<mvc:interceptors>
+		<mvc:interceptor>
+			<!-- 拦截所有请求 -->
+			<mvc:mapping path="/**" />
+			<!-- 不拦截静态资源 -->
+			<mvc:exclude-mapping path="/Context/**" />
+			<!-- 验证登录拦截器 -->
+			<bean class="com.koi.interceptor.LoginInterceptor" />
+		</mvc:interceptor>
+	</mvc:interceptors>
+</beans>

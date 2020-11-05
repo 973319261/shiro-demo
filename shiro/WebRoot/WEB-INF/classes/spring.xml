@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx" xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+http://www.springframework.org/schema/beans/spring-beans-4.3.xsd 
+http://www.springframework.org/schema/tx 
+http://www.springframework.org/schema/tx/spring-tx-4.3.xsd 
+http://www.springframework.org/schema/context 
+http://www.springframework.org/schema/context/spring-context-4.3.xsd 
+http://www.springframework.org/schema/aop 
+http://www.springframework.org/schema/aop/spring-aop-4.3.xsd">
+	<!-- 读取相关属性文件 -->
+	<context:property-placeholder location="classpath:db.properties" />
+	<context:component-scan base-package="com.koi">
+		<!-- 排除控制层@Controller注解 -->
+		<context:exclude-filter type="annotation"
+			expression="org.springframework.stereotype.Controller" />
+	</context:component-scan>
+	<!-- 加载相应xml配置文件 -->
+	<import resource="spring-shiro.xml" />
+	<!-- <import resource="spring-redis.xml"/> -->
+	<import resource="spring-mybatis.xml" />
+	<!-- 开启日志记录 -->
+	<!-- 启动基于注解的声明式AspectJ支持 -->
+	<!-- <aop:aspectj-autoproxy /> -->
+	<!-- 基于xml声明式AspectJ日志配置 -->
+	<!-- 声明一个bean -->
+	<bean id="myAspect" class="com.koi.aop.LogAspect" />
+	<aop:config>
+		<!-- 把myAspect bean转为切面类 -->
+		<aop:aspect ref="myAspect">
+			<!-- 切入点 -->
+			<aop:pointcut expression="@annotation(com.koi.annotation.LogAnnotation)"
+				id="myPointcut" />
+			<!-- 环绕通知 -->
+			<aop:around method="aroundAdvice" pointcut-ref="myPointcut" />
+		</aop:aspect>
+	</aop:config>
+</beans>

@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.koi.mapper.UserPermissionMapper">
+	<!-- 开启二级缓存 -->
+	<cache />
+	<!-- 通过userId查询该用户所拥有的权限 -->
+	<select id="selectPermissionByUserId" parameterType="long"
+		resultType="UPermission">
+		SELECT u_permission.* FROM
+		u_user,u_role,u_user_role,u_permission,u_role_permission WHERE
+		u_user.id=u_user_role.uid AND u_role.id=u_user_role.rid AND
+		u_role.id=u_role_permission.rid AND
+		u_permission.id=u_role_permission.pid AND u_user.id=#{userId}
+	</select>
+	<!-- 查询所有用户权限 -->
+	<select id="selectPermissonList" parameterType="string" resultType="UPermission">
+		SELECT u_permission.* FROM u_permission
+		<if test="info != '' and info!=null ">
+			<where>	
+				u_permission.name like concat('%',#{info},'%')
+			</where>
+		</if>
+	</select>
+	<!-- 新增权限列表 -->
+	<insert id="addPermissonList" parameterType="UPermission">
+		INSERT INTO
+		u_permission(name,url)VALUES(#{name},#{url})
+	</insert>
+	<!-- 通过Permisson主键删除权限列表 -->
+	<delete id="deletePermissonListById">
+		DELETE u_permission.*,u_role_permission.* FROM
+		u_permission LEFT JOIN
+		u_role_permission ON u_permission.id = u_role_permission.rid
+		WHERE
+		u_permission.id IN
+		<foreach collection="array" open="(" separator="," close=")"
+			item="id">
+			#{id}
+		</foreach>
+	</delete>
+	
+	<!-- 查角色（主表）列表 -->
+	<select id="selectPerAllocation" resultMap="role" useCache="false">
+		SELECT u_role.id role_id, u_role.name role_name,u_role.type role_type
+		FROM
+		u_role
+		<if test="info != '' and info!=null">
+			<!-- 绑定元素 -->
+			<bind name="info" value="'%'+info+'%'" />
+			<where>
+				u_role.name like #{info} or
+				u_role.type like #{info}
+			</where>
+		</if>
+	</select>
+	<!-- 返回角色列表结果数据并且嵌套查询该用户信息和该用户的权限列表 -->
+	<resultMap type="URolePermission" id="role">
+		<id column="role_id" property="id" />
+		<result column="role_name" property="name" />
+		<result column="role_type" property="type" />
+		<collection property="permission" ofType="UPermission"
+			column="role_id" select="queryPermissionByRoleId">
+		</collection>
+	</resultMap>
+	<!-- 通过 role_id查询权限列表（关联表） -->
+	<select id="queryPermissionByRoleId" resultType="UPermission">
+		SELECT
+		u_permission.id,u_permission.name,u_permission.url FROM u_permission
+		LEFT JOIN
+		u_role_permission ON
+		u_permission.id=u_role_permission.pid
+		WHERE
+		u_role_permission.rid=#{role_id}
+	</select>
+	<!-- 通过RoleId查询权限分配 -->
+	<select id="selectPermissionByRoleId" resultType="int">
+		SELECT
+		u_role_permission.pid FROM u_role_permission WHERE
+		u_role_permission.rid=#{rId}
+	</select>
+	<!-- 勾选权限分配 -->
+	<insert id="addPerAllocation">
+		INSERT INTO u_role_permission(rid,pid)VALUES
+		<foreach collection="perIds" item="pId" separator=",">
+			(#{rId},#{pId})
+		</foreach>
+	</insert>
+	<!-- 取消勾选权限分配 -->
+	<delete id="deletePerAllocation">
+		DELETE FROM u_role_permission WHERE rid=#{rId} AND pid IN
+		<foreach collection="perIds" item="pId" open="(" separator=","
+			close=")">
+			#{pId}
+		</foreach>
+	</delete>
+</mapper>
